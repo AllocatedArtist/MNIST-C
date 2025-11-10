@@ -325,6 +325,8 @@ void layer_update_backwards(layer_t *current, layer_t *next,
     next->biases_[y] -= learning_rate * dl;
   }
 
+  // update current layer derivatives (if not input layer)
+
   if (current->dl_ != NULL) {
     for (int x = 0; x < current->neuron_count_; ++x) {
       float delta_h = 0.0f;
@@ -538,65 +540,57 @@ int main(void) {
   mnist_t mnist_data;
   mnist_read_test_data("../train-images-idx3-ubyte/train-images.idx3-ubyte",
                        &mnist_data);
-  printf("Test data read\n");
+  printf("Training data read\n");
   mnist_read_label_data("../train-labels-idx1-ubyte/train-labels.idx1-ubyte",
                         &mnist_data);
-  printf("Test label data read\n");
+  printf("Training labels read\n");
 
   int total_epochs = network.params_.epoch_count_;
-  int batch_size = network.params_.batch_size_;
   int total_data = mnist_data.testing_data_size_;
 
-  int groups = total_data / batch_size;
-
   for (int i = 0; i < total_epochs; ++i) {
-    float accumulated_loss = 0.0f;
     int number_correct = 0;
-    for (int j = 0; j < groups; ++j) {
+    for (int j = 0; j < total_data; ++j) {
       network_reset_gradients(&network);
 
-      float batch_loss = 0.0f;
-      for (int k = 0; k < batch_size; ++k) {
-        const mnist_input *current_input =
-            &mnist_data.testing_data_[j * batch_size + k];
+      const mnist_input *in = &mnist_data.testing_data_[j];
+      int expected = in->label_;
 
-        network_feed_image(&network, &current_input->image_);
+      float lr = network.params_.learning_rate_;
 
-        network_forward(&network);
+      network_feed_image(&network, &in->image_);
 
-        batch_loss += layer_cross_entropy(&network.layers_[FINAL_LAYER],
-                                          current_input->label_);
-        number_correct +=
-            correct(&network.layers_[FINAL_LAYER], current_input->label_);
+      // forward pass
+      network_forward(&network);
 
-        network_backward(&network, current_input->label_);
-      }
-      accumulated_loss += batch_loss / batch_size;
-      network_update(&network);
+      number_correct += correct(&network.layers_[FINAL_LAYER], expected);
 
-      int num_batches = (j + 1) * batch_size;
-      float progress = (float)num_batches / total_data;
+      // backward pass
+      layer_cross_entropy_backwards(&network.layers_[FINAL_LAYER], expected);
+      layer_update_backwards(&network.layers_[THIRD_LAYER],
+                             &network.layers_[FINAL_LAYER], lr);
+      layer_update_backwards(&network.layers_[SECOND_LAYER],
+                             &network.layers_[THIRD_LAYER], lr);
+      layer_update_backwards(&network.layers_[INPUT_LAYER],
+                             &network.layers_[SECOND_LAYER], lr);
 
-      int bar_width = 50;
-
-      int filled_length = (int)(bar_width * progress);
-
-      printf("\r[");
-      for (int i = 0; i < bar_width; ++i) {
-        if (i < filled_length) {
-          printf("#");
-        } else {
-          printf(".");
-        }
-      }
-      printf("] Epoch %d, Accuracy: %d/%d", i, number_correct, total_data);
+      printf("\r%d/%d completed, %d/%d correct", j + 1, total_data,
+             number_correct, j + 1);
       fflush(stdout);
     }
-    printf("\nEpoch %d/%d (Completed), Loss: %.4f\n, Accuracy: %.2f", i + 1,
-           total_epochs, accumulated_loss, number_correct / (float)total_data);
+
+    printf("\nEpoch %d Completed\n", i + 1);
   }
 
   mnist_free(&mnist_data);
+
+  mnist_t test;
+  mnist_read_test_data("../train-images-idx3-ubyte/train-images.idx3-ubyte",
+                       &mnist_data);
+  printf("Testing data read\n");
+  mnist_read_label_data("../train-labels-idx1-ubyte/train-labels.idx1-ubyte",
+                        &mnist_data);
+  printf("Testing labels read\n");
 
   printf("Done\n");
   return 0;
