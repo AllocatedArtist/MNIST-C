@@ -545,6 +545,14 @@ int main(void) {
                         &mnist_data);
   printf("Training labels read\n");
 
+  mnist_t test;
+  mnist_read_test_data("../t10k-images-idx3-ubyte/t10k-images.idx3-ubyte",
+                       &test);
+  printf("Testing data read\n");
+  mnist_read_label_data("../t10k-labels-idx1-ubyte/t10k-labels.idx1-ubyte",
+                        &test);
+  printf("Testing labels read\n");
+
   int total_epochs = network.params_.epoch_count_;
   int total_data = mnist_data.testing_data_size_;
 
@@ -582,15 +590,24 @@ int main(void) {
     printf("\nEpoch %d Completed\n", i + 1);
   }
 
-  mnist_free(&mnist_data);
+  printf("Running testing data...\n");
 
-  mnist_t test;
-  mnist_read_test_data("../train-images-idx3-ubyte/train-images.idx3-ubyte",
-                       &mnist_data);
-  printf("Testing data read\n");
-  mnist_read_label_data("../train-labels-idx1-ubyte/train-labels.idx1-ubyte",
-                        &mnist_data);
-  printf("Testing labels read\n");
+  int nr_correct = 0;
+  for (int i = 0; i < test.testing_data_size_; ++i) {
+    const mnist_input *in = &test.testing_data_[i];
+
+    network_feed_image(&network, &in->image_);
+
+    nr_correct += correct(&network.layers_[FINAL_LAYER], in->label_);
+
+    printf("\r%d/%d images classified.", i + 1, test.testing_data_size_);
+    fflush(stdout);
+  }
+
+  printf("\nModel got %d/%d correct!\n", nr_correct, test.testing_data_size_);
+
+  mnist_free(&mnist_data);
+  mnist_free(&test);
 
   printf("Done\n");
   return 0;
