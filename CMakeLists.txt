@@ -4,5 +4,5 @@ project(mnist)
 
 add_compile_options(-g)
 
-add_executable(mnist mnist.c)
+add_executable(mnist train.c)
 
