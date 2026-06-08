@@ -48,12 +48,12 @@ void network_forward(network_t *network) {
   layer_forward_pass(&network->layers_[INPUT_LAYER],
                      &network->layers_[SECOND_LAYER]);
 
-  layer_sigmoid(&network->layers_[SECOND_LAYER]);
+  layer_relu(&network->layers_[SECOND_LAYER]);
 
   layer_forward_pass(&network->layers_[SECOND_LAYER],
                      &network->layers_[THIRD_LAYER]);
 
-  layer_sigmoid(&network->layers_[THIRD_LAYER]);
+  layer_relu(&network->layers_[THIRD_LAYER]);
 
   layer_forward_pass(&network->layers_[THIRD_LAYER],
                      &network->layers_[FINAL_LAYER]);
