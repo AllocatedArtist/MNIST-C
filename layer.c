@@ -106,11 +106,21 @@ void layer_forward_pass(const layer_t *input, layer_t *output) {
 
 float sigmoid(float input) { return 1.0f / (1 + expf(-input)); }
 
+float relu(float input) { return input >= 0 ? input : 0; }
+
 void layer_sigmoid(layer_t *output) {
   int output_size = output->neuron_count_;
   for (int i = 0; i < output_size; ++i) {
     float input = output->inputs_[i];
     output->activations_[i] = sigmoid(input);
+  }
+}
+
+void layer_relu(layer_t *output) {
+  int output_size = output->neuron_count_;
+  for (int i = 0; i < output_size; ++i) {
+    float input = output->inputs_[i];
+    output->activations_[i] = relu(input);
   }
 }
 
@@ -173,6 +183,10 @@ float sigmoid_derivative(float activation) {
   return activation * (1 - activation);
 }
 
+float relu_derivative(float activation) {
+  return activation > 0;
+}
+
 void layer_output_backwards(layer_t *output, int expected) {
   assert(expected >= 0 && expected < 10 && "Invalid expectation.");
   int expected_val[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -197,8 +211,8 @@ void layer_compute_hidden(layer_t *current, layer_t *next) {
       float weight = next->weights_[y * current_size + x];
       dl += weight * dc_dn;
     }
-    // backwards sigmoid
-    float da_dx = sigmoid_derivative(current->activations_[x]);
+    // backwards relu
+    float da_dx = relu_derivative(current->activations_[x]);
     dl *= da_dx;
     current->dl_[x] = dl;
   }
